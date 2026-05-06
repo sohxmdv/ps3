@@ -6,7 +6,7 @@
 - **All-Female Team**: No
 
 ## Architecture Overview
-This system is a comprehensive quantitative finance platform designed to bridge the gap between algorithmic signal generation and institutional-grade risk management. It operates through a decoupled three-layer architecture to ensure low-latency execution and high data integrity.
+Our system is a quantitative finance platform designed to combine algorithmic trading with institutional-style risk management through a modular three-layer architecture.
 
 Architecture Deep-Dive
 1. Data Pipeline Layer (Python & Pandas)
