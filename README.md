@@ -1,9 +1,9 @@
 # Hedge Fund Risk Modeling & Semi-Automated Trading System
 
 ## Team Information
-- **Team Name**: [Team Name]
-- **Year**: [Year]
-- **All-Female Team**: [Yes/No]
+- **Team Name**: Kabhi Code Kabhi Bug
+- **Year**: 3rd Year
+- **All-Female Team**: No
 
 ## Architecture Overview
 
