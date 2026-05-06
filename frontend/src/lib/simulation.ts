@@ -164,13 +164,15 @@ function calculateMaxDrawdown(values: number[]): number {
 }
 
 export async function fetchSimulation(): Promise<DashboardData> {
-  const response = await fetch("/api/simulate/latest", { headers: { Accept: "application/json" } });
+  // FIXED: Point directly to port 8000
+  const response = await fetch("http://localhost:8000/api/simulate/latest", { headers: { Accept: "application/json" } });
   if (!response.ok) throw new Error(`Simulation feed failed: ${response.status}`);
   return normalizeSimulationPayload(await response.json());
 }
 
 export async function runSimulation(): Promise<DashboardData> {
-  const response = await fetch("/api/simulate", {
+  // FIXED: Point directly to port 8000
+  const response = await fetch("http://localhost:8000/api/simulate", {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({ risk_free_rate: 0.02, max_drawdown_limit: 0.1 })
