@@ -1,0 +1,11 @@
+# Data Engineering
+pandas
+numpy
+
+# Quant Engine & API
+fastapi
+uvicorn
+scipy
+
+# Utilities
+python-multipart
