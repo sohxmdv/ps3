@@ -20,6 +20,8 @@ sys.path.append(str(BASE_DIR))
 # Import the new pipeline from the __init__.py file
 from backend.data_pipeline import get_clean_data
 from backend.engine.backtest_engine import BacktestEngine
+from api.metrics import calculate_performance_metrics, build_equity_curve_payload
+
 
 # Configure logging
 log_level = os.getenv("LOG_LEVEL", "INFO")
@@ -132,50 +134,20 @@ async def health_check():
 
 @app.post("/api/simulate", response_model=SimulationResponse)
 async def run_simulation(params: SimulationParams):
-    """
-    Run backtest simulation with given parameters.
-    """
     try:
-        logger.info(f"Starting simulation with params: {params}")
+        data_dir_path = str(BASE_DIR / "data" / "raw")
+        data = get_clean_data(data_dir_path=data_dir_path, save_processed=True)
+        
+        # Integration Fix
+        data = data.rename(columns={'equity_Price': 'Close', 'equity_Returns': 'Returns', 'equity_SMA_10': 'SMA_10'})
+        if 'SMA_50' not in data.columns:
+            data['SMA_50'] = data['Close'].rolling(window=params.sma_long_window).mean().bfill()
+        if 'RSI' not in data.columns:
+            delta = data['Close'].diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+            data['RSI'] = (100 - (100 / (1 + (gain / loss)))).bfill()
 
-        # Get clean data from Data Engineer's pipeline
-        try:
-            data_dir_path = str(BASE_DIR / "data" / "raw")
-            data = get_clean_data(data_dir_path=data_dir_path, save_processed=True)
-
-            # --- THE INTEGRATION FIX ---
-            # 1. Rename columns to match what the Backtest Engine expects
-            data = data.rename(
-                columns={
-                    "equity_Price": "Close",
-                    "equity_Returns": "Returns",
-                    "equity_SMA_10": "SMA_10",
-                }
-            )
-
-            # 2. Calculate the missing indicators required by the Signal Generator
-            if "SMA_50" not in data.columns:
-                data["SMA_50"] = (
-                    data["Close"].rolling(window=params.sma_long_window).mean().bfill()
-                )
-
-            if "RSI" not in data.columns:
-                delta = data["Close"].diff()
-                gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-                loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-                rs = gain / loss
-                data["RSI"] = 100 - (100 / (1 + rs))
-                data["RSI"] = data["RSI"].bfill()
-            # ---------------------------
-
-            logger.info(f"Loaded data: {len(data)} rows, columns: {list(data.columns)}")
-        except Exception as e:
-            logger.error(f"Failed to load data: {e}")
-            raise HTTPException(
-                status_code=500, detail=f"Data pipeline error: {str(e)}"
-            )
-
-        # Initialize and run backtest engine
         engine = BacktestEngine(
             initial_capital=params.initial_capital,
             sma_short=params.sma_short_window,
@@ -183,30 +155,40 @@ async def run_simulation(params: SimulationParams):
             var_confidence=params.var_confidence,
             max_position_size=params.max_position_size,
             transaction_fee_rate=params.transaction_fee_rate,
-            slippage_base_rate=params.slippage_base_rate,
+            slippage_base_rate=params.slippage_base_rate
         )
-
+        
         results = engine.run(data)
-
-        logger.info(
-            f"Simulation complete. Final value: ${results['summary']['final_value']:,.2f}"
-        )
+        
+        # --- THE GLUE: Formatting for the React Frontend ---
+        benchmark_csv_path = str(BASE_DIR / "data" / "raw" / "equity_dataset.csv")
+        
+        # Calculate Advanced KPIs
+        frontend_metrics = calculate_performance_metrics(results['daily_values'], benchmark_path=benchmark_csv_path)
+        
+        # Build Equity Curve for Recharts
+        frontend_chart = build_equity_curve_payload(results['daily_values'], benchmark_path=benchmark_csv_path)
+        
+        # Format Trades for the Table
+        frontend_trades = [
+            {
+                "id": f"trade_{i}",
+                "date": t["date"][:10], # Extract just YYYY-MM-DD
+                "action": t["action"],
+                "asset": "EQUITY",
+                "rationale": t.get("reason", "Strategy execution")
+            } for i, t in enumerate(results['trades'])
+        ]
 
         return SimulationResponse(
-            status="success",
-            summary=results["summary"],
-            daily_values=results["daily_values"],
-            trades=results["trades"],
-            risk_metrics=results["risk_metrics"],
-            signals=results["signals"],
+            metrics=frontend_metrics,
+            chart=frontend_chart,
+            trades=frontend_trades
         )
-
-    except HTTPException:
-        raise
+    
     except Exception as e:
         logger.error(f"Simulation failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Simulation error: {str(e)}")
-
 
 @app.get("/api/simulate")
 async def run_simulation_get(
