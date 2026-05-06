@@ -16,7 +16,7 @@ graph TD
     classDef data fill:#f39c12,stroke:#fff,stroke-width:2px,color:#fff;
     classDef risk fill:#e74c3c,stroke:#fff,stroke-width:2px,color:#fff;
 
-    subgraph 1. Data Pipeline Layer (Python / Pandas)
+    subgraph Layer1 [1. Data Pipeline Layer Python / Pandas]
         A1[Raw Datasets: Equity, Macro, Assets]:::data
         A2[Data Loader & CSV Merger]:::data
         A3[Imputation Engine]:::data
@@ -26,7 +26,7 @@ graph TD
         A3 -->|Standardized Datetime| A4
     end
 
-    subgraph 2. Quant Engine & API (FastAPI)
+    subgraph Layer2 [2. Quant Engine & API FastAPI]
         B1(Signal Generator):::backend
         B2(Risk Manager Gatekeeper):::risk
         B3(Portfolio State Manager):::backend
@@ -40,7 +40,7 @@ graph TD
         B3 -->|Execution Logs| B4
     end
 
-    subgraph 3. Insights Dashboard (Next.js)
+    subgraph Layer3 [3. Insights Dashboard Next.js]
         C1[Client Dashboard UI]:::frontend
         C2[Recharts Performance Graph]:::frontend
         C3[Risk KPI Cards]:::frontend
@@ -52,6 +52,7 @@ graph TD
         C1 --> C3
         C1 --> C4
     end
+
 #### Describe your approach here. Keep it short and clear.
 
     - How does your system ingest and preprocess the varying data sources (market, macro, sentiment)?
