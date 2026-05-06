@@ -5,8 +5,16 @@
 - **Year**: 3rd Year
 - **All-Female Team**: No
 
+## Overview
+This project separates heavy financial computation from the user interface to create a modular trading system.
+The architecture is divided into three layers:
+- **Data Pipeline** for ingesting and aligning raw time series data
+- **Quant Engine (Backend)** for signal generation, risk management, and trade simulation
+- **Insights Dashboard (Frontend)** for visualization and explainability
+
 ## Architecture Overview
-Our system is designed with a decoupled, microservices-style architecture to separate heavy financial computation from the user interface. The flow is divided into three distinct layers: The Data Pipeline, The Quant Engine (Backend), and The Insights Dashboard (Frontend).
+Our system follows a decoupled design that keeps data processing, quant logic, and the dashboard separate.
+This improves maintainability and makes it easier to extend each layer independently.
 
 ### System Architecture Diagram
 ```mermaid
@@ -34,7 +42,7 @@ graph TD
         B2(Risk Manager Gatekeeper):::risk
         B3(Portfolio State Manager):::backend
         B4(Financial Metrics Engine):::backend
-        
+
         A4 -->|Market & Sentiment Data| B1
         B1 -->|Buy/Sell Signals| B2
         A4 -->|Volatility Data| B2
@@ -49,7 +57,7 @@ graph TD
         C2[Recharts Performance Graph]:::frontend
         C3[Risk KPI Cards]:::frontend
         C4[Explainable Audit Log]:::frontend
-        
+
         C1 -->|POST /api/simulate| B3
         B4 -.->|JSON Response: Timeline & Metrics| C1
         C1 --> C2
@@ -58,65 +66,51 @@ graph TD
     end
 ```
 
-Architectural Flow & Explanation
-1. Data Ingestion & Preprocessing (The Foundation)
-To prevent forward-looking bias, our system ingests multiple asynchronous datasets (equity, macro, multi-asset) using Pandas. Missing values (such as initial SMA_10 rows) are handled via backward filling, and monthly macroeconomic data is aligned to daily stock prices using Last Observation Carried Forward (LOCF). This results in a single, pristine timeline.
+## Architectural Flow & Explanation
 
-2. The Quant Engine & Risk Gatekeeper (Backend)
-Built on FastAPI, this is the mathematical brain of the system. It operates in a strict loop:
+1. **Data Ingestion & Preprocessing**
+   - Ingests asynchronous datasets (equity, macro, multi-asset) using Pandas.
+   - Missing values are handled through backward filling.
+   - Monthly macro data is aligned to daily prices using Last Observation Carried Forward (LOCF).
+   - The result is a clean, aligned single timeline for analysis.
 
-Signal Generation: Analyzes moving average crossovers and sentiment scores to suggest trades.
+2. **The Quant Engine & Risk Gatekeeper (Backend)**
+   - Built on FastAPI, this backend performs signal generation, risk checks, and portfolio simulation.
+   - **Signal Generation** analyzes moving average crossovers and sentiment indicators to propose trades.
+   - **Risk Management** computes Parametric Value at Risk (VaR) and enforces allocation limits.
+   - **Execution Simulation** applies transaction fees and slippage to make backtests more realistic.
 
-Risk Management: Before any trade is executed, the Risk Manager calculates the Parametric Value at Risk (VaR). If a trade exposes the portfolio beyond our predefined risk limits (e.g., >5% capital allocation), the trade is blocked or resized.
+3. **Insights Dashboard & Metrics (Frontend)**
+   - The backend computes performance metrics such as Sharpe Ratio, Alpha, Beta, and Maximum Drawdown.
+   - A Next.js dashboard visualizes the equity curve, risk KPIs, and explainable trade logs.
+   - The explainability log details the reason for each trade and the cost assumptions used.
 
-Realistic Execution: Approved trades are passed to the Portfolio Manager, which strictly deducts transaction fees and simulated market slippage from the cash balance to ensure realistic backtesting.
-
-3. Insights Dashboard & Metrics (Frontend)
-The backend calculates final financial performance metrics (Sharpe Ratio, Alpha, Beta, and Maximum Drawdown) and serves them to a Next.js frontend. The dashboard utilizes Recharts to visualize the portfolio's equity curve against market benchmarks and provides a scrolling "Explainability Log." This log proves our system is not a black box by detailing exactly why every trade was made and what friction costs were applied.
-
-
-### File Structure
+## File Structure
 ```text
-hedge-fund-system/
-├── data/                           # (Data Engineer's Domain)
-│   ├── equity_dataset.csv
-│   ├── macro-dataet.csv
-│   ├── multi_assetdataset.csv
-│   └── oil_dataset.csv
-│
-├── backend/                        # (Quant Developer's Domain)
-│   ├── main.py                     # FastAPI application entry point
-│   ├── requirements.txt            # Python dependencies (pandas, fastapi, uvicorn, scipy)
-│   ├── data_pipeline/              # Scripts to ingest/clean data
-│   │   ├── __init__.py
-│   │   ├── loader.py               # Merges the CSV files into one DataFrame
-│   │   └── preprocessor.py         # Imputes missing values and aligns dates
-│   ├── engine/                     # Core trading & risk logic
-│   │   ├── __init__.py
-│   │   ├── portfolio.py            # Tracks cash, deducts slippage & fees
-│   │   ├── risk_manager.py         # Calculates VaR, enforces position limits
-│   │   └── signal_generator.py     # Generates Buy/Sell signals (Moving Averages)
-│   └── api/                        # REST API layer
-│       ├── __init__.py
-│       ├── routes.py               # Houses the POST /api/simulate endpoint
-│       └── metrics.py              # Calculates Sharpe, Alpha, Beta, Drawdown
-│
-├── frontend/                       # (Analytics Engineer's Domain)
-│   ├── package.json
-│   ├── tailwind.config.js
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── page.tsx            # Main dashboard view
-│   │   │   ├── layout.tsx
-│   │   │   └── globals.css
-│   │   ├── components/             # Reusable UI parts
-│   │   │   ├── KPICards.tsx        # Displays Sharpe, Drawdown, etc.
-│   │   │   ├── PerformanceChart.tsx# The main Recharts line graph
-│   │   │   ├── TradeLogTable.tsx   # The explainable audit trail
-│   │   │   └── SimulationControls.tsx # Sliders for risk inputs
-│   │   └── lib/
-│   │       └── api.ts              # Fetch logic to connect to localhost:8000
+ps3/
+├── data/
+│   └── raw/
+│       ├── equity_dataset.csv
+│       ├── macro_dataset.csv
+│       ├── multi_asset_dataset.csv
+│       └── oil_dataset.csv
+├── backend/
+│   ├── __init__.py
+│   ├── requirements.txt
+│   └── data_pipeline/
+│       └── engine/
+│           ├── __init__.py
+│           ├── backtest_engine.py
+│           ├── main.py
+│           ├── portfolio.py
+│           ├── risk_manager.py
+│           └── signal_generator.py
+└── frontend/
 ```
+
+## Setup
+For backend setup instructions, see `setup.md`.
+
 #### Describe your approach here. Keep it short and clear.
 
     - How does your system ingest and preprocess the varying data sources (market, macro, sentiment)?
