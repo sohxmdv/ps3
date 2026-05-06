@@ -6,23 +6,24 @@
 - **All-Female Team**: No
 
 ## Architecture Overview
-Our system utilizes a modular, microservices-inspired architecture designed to seamlessly ingest asynchronous financial data, execute risk-aware trading strategies, and deliver explainable metrics. The system is decoupled into three primary layers: The Data Pipeline, The Quant Engine (Backend), and The Insights Dashboard (Frontend).
+This system is a comprehensive quantitative finance platform designed to bridge the gap between algorithmic signal generation and institutional-grade risk management. It operates through a decoupled three-layer architecture to ensure low-latency execution and high data integrity.
 
-Architectural Flow & Explanation
-1. Data Ingestion & Preprocessing (The Foundation)
-To prevent forward-looking bias, our system ingests multiple asynchronous datasets (equity, macro, multi-asset) using Pandas. Missing values (such as initial SMA_10 rows) are handled via backward filling, and monthly macroeconomic data is aligned to daily stock prices using Last Observation Carried Forward (LOCF). This results in a single, pristine timeline.
+Architecture Deep-Dive
+1. Data Pipeline Layer (Python & Pandas)
+The ingestion engine handles heterogeneous datasets including equity OHLC, macroeconomic indicators, and sentiment data. The Imputation Engine utilizes Last Observation Carried Forward (LOCF) to resolve asynchronous time-series gaps, ensuring a standardized "Clean Aligned Timeline" for the backtester, eliminating look-ahead bias.
 
-2. The Quant Engine & Risk Gatekeeper (Backend)
-Built on FastAPI, this is the mathematical brain of the system. It operates in a strict loop:
+2. Quant Engine & API (FastAPI)
+Acting as the system's brain, the Signal Generator produces trade triggers which are immediately intercepted by the Risk Manager Gatekeeper. This layer calculates Value at Risk (VaR) and enforces strict position limits. Before final execution, the Portfolio State Manager adjusts for slippage and transaction costs to maintain a realistic equity curve.
 
-Signal Generation: Analyzes moving average crossovers and sentiment scores to suggest trades.
+3. Insights Dashboard (Next.js & Recharts)
+The frontend provides an interactive cockpit for fund managers. It features Explainable Audit Logs that detail why specific signals were blocked by risk protocols, alongside real-time KPI cards (Sharpe Ratio, Max Drawdown) to visualize the strategy's risk-adjusted performance.
 
-Risk Management: Before any trade is executed, the Risk Manager calculates the Parametric Value at Risk (VaR). If a trade exposes the portfolio beyond our predefined risk limits (e.g., >5% capital allocation), the trade is blocked or resized.
+Technical Stack
+Backend: Python, FastAPI, Pandas, NumPy
 
-Realistic Execution: Approved trades are passed to the Portfolio Manager, which strictly deducts transaction fees and simulated market slippage from the cash balance to ensure realistic backtesting.
+Frontend: Next.js, TypeScript, Recharts, Tailwind CSS
 
-3. Insights Dashboard & Metrics (Frontend)
-The backend calculates final financial performance metrics (Sharpe Ratio, Alpha, Beta, and Maximum Drawdown) and serves them to a Next.js frontend. The dashboard utilizes Recharts to visualize the portfolio's equity curve against market benchmarks and provides a scrolling "Explainability Log." This log proves our system is not a black box by detailing exactly why every trade was made and what friction costs were applied.
+Risk Logic: VaR Modeling, Volatility Filtering, Slippage Simulation
 
 ### System Architecture Diagram
 ```mermaid
